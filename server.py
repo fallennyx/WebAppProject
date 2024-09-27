@@ -17,6 +17,8 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
         self.router.add_route("GET", "/style.css", self.css_path, True)
         self.router.add_route("GET", "/webrtc.js", self.js_path, True)
         self.router.add_route("GET", "/image/<image_name>", self.image_path, True)
+        self.visits=1
+
 
         self.files = {
             "index.html": "text/html",
@@ -70,15 +72,14 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
 
 #HANDLES INDEX PATH
     def index_path(self, request, handler):
-        cookie_header = request.headers.get("Cookie")
-        visit_count=1
-
-
-
+        #UPDATES COOKIES
+        if "visits" in request.cookies:
+            self.visits = int(request.cookies["visits"]) + 1
 
         if "index.html" in self.loaded_files:
             content = self.loaded_files["index.html"]["content"]
             content_type = self.loaded_files["index.html"]["content_type"]
+            content=content.replace('{[{visits}}', str(self.visits))
             self.send_response(content,content_type)
         else:
             self.send_error()
@@ -117,6 +118,7 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
                       f"Content-Type: {content_type}\n"
                       f"Content-Length: {len(content)}\n"
                       "X-Content-Type-Options: nosniff\n"
+                      f"Set-Cookie: visit_count={self.visits};Max-Age=3600 Path=/\n"
                       "\n")
         self.request.sendall(header.encode() + content)
 #SENDS ERROR TO CLIENT(BROWSER)
