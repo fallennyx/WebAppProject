@@ -31,21 +31,6 @@ class Request:
                 self.cookies[key.strip()] = value.strip()
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 def test1():
     request = Request(b'GET / HTTP/1.1\r\nHost: localhost:8080\r\nConnection: keep-alive\r\n\r\nhello')
     assert request.method == "GET"
