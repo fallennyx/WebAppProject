@@ -12,6 +12,10 @@ class Request:
         lines = request_str.split('\r\n')
 
         requestline=lines[0].split(' ')
+        if len(requestline) != 3:
+            print("ERROR SEE BELOW")
+            print(requestline)
+            raise ValueError('Invalid request line')
         self.method = requestline[0]
         self.path = requestline[1]
         self.http_version = requestline[2]
