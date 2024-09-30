@@ -1,8 +1,13 @@
 import socketserver
+
+from bson import ObjectId
+
 from util.request import Request
 from util.router import Router
-import os
-from util.hello_path import hello_path
+from pymongo import MongoClient
+import json
+import html
+
 
 
 class MyTCPHandler(socketserver.BaseRequestHandler):
@@ -13,13 +18,16 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
 
     def __init__(self, request, client_address, server):
         self.router = Router()
+        self.init_database()
         self.router.add_route("GET", "/", self.index_path, True)
         self.router.add_route("GET", "/public/style.css", self.css_path, True)
         self.router.add_route("GET", "/public/webrtc.js", self.js_path, True)
         self.router.add_route("GET", "/public/functions.js", self.js_path, True)
         self.router.add_route("GET", "/public/image/", self.image_path, False)
         self.router.add_route("GET", "/public/favicon.ico", self.icon_path, True)
-
+        self.router.add_route("POST", "/chat-messages", self.post_chat_message, True)
+        self.router.add_route("GET", "/chat-messages", self.get_chat_messages, True)
+        self.router.add_route("DELETE", "/chat-messages/", self.delete_chat_message, False)
         self.visits = 1
 
         self.files = {
@@ -44,6 +52,10 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
     #CREEATES REQUEST OBJECT TO PARSE USING REUEST.PY
     #USES ROUTER.PY TO ROUTE REQUEST TO ITS APPROPIATE HANDLER FUNCTION
     #HANDLER FUNCTION SENDS RESPONSE TO CLIENT(BROWSER)
+    def init_database(self):
+        self.mongo_client = MongoClient("mongo")
+        self.db = self.mongo_client["cse312"]
+        self.chat_collection = self.db["chat"]
 
     def handle(self):
         received_data = self.request.recv(2048)
@@ -130,8 +142,8 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
             self.send_error()
 
     #SENDS RESPONSE TO CLIENT(BROWSER)
-    def send_response(self, content, content_type,set_cookie=False):
-        header = (f"HTTP/1.1 200 OK\r\n"
+    def send_response(self, content, content_type,status_code=200,set_cookie=False):
+        header = (f"HTTP/1.1 {status_code} OK\r\n"
                   f"Content-Type: {content_type};charset=utf-8\r\n"
                   f"Content-Length: {len(content)}\r\n"
                   "X-Content-Type-Options: nosniff\r\n")
@@ -142,8 +154,45 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
         self.request.sendall(header.encode() + content)
 
 
+    def post_chat_message(self, request, handler):
+        try:
+            data = json.loads(request.body.decode('utf-8'))
+            username = "Guest"
+            message = html.escape(data['message'])
+            result = self.chat_collection.insert_one({"username": username, "message": message})
+            response = json.dumps({"id": str(result.inserted_id)})
+            self.send_response(response.encode('utf-8'), 'application/json')
+        except Exception as e:
+            print(f"Error in post_chat_message: {e}")
+            self.send_error()
 
-    #SENDS ERROR TO CLIENT(BROWSER)
+    def get_chat_messages(self, request, handler):
+        try:
+            messages = list(self.chat_collection.find())
+            formatted_messages = []
+            for msg in messages:
+                formatted_messages.append({
+                        "username": msg['username'],
+                        "message": html.escape(msg['message']),
+                        "id": str(msg['_id'])
+                })
+            response = json.dumps(formatted_messages)
+            self.send_response(response.encode('utf-8'), 'application/json')
+        except Exception as e:
+            print(f"Error in get_chat_messages: {e}")
+            self.send_error()
+
+    def delete_chat_message(self, request, handler):
+        try:
+            message_id = request.path.split('/')[-1]
+            result = self.chat_collection.delete_one({"_id": ObjectId(message_id)})
+            self.send_response(b'', 'application/json', 204)
+        except Exception as e:
+                print(f"Error in delete_chat_message: {e}")
+                self.send_response(b'', 'application/json', 204)
+
+
+
     def send_error(self):
         message = "404 Not Found"
         content = message.encode()

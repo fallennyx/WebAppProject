@@ -17,7 +17,7 @@ function welcome() {
     if (ws) {
         initWS();
     } else {
-        setInterval(updateChat, 3000);
+        setInterval(updateChat, 1000);
     }
 
     // use this line to start your video without having to click a button. Helpful for debugging
