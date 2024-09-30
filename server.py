@@ -11,6 +11,7 @@ import html
 
 
 class MyTCPHandler(socketserver.BaseRequestHandler):
+    visits=0
     #INITIALIZES ROUTER OBJECT
     #ADDS ROUTES TO ROUTER OBJECT
     #LOADS FILES INTO DICTIONARY
@@ -28,21 +29,19 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
         self.router.add_route("POST", "/chat-messages", self.post_chat_message, True)
         self.router.add_route("GET", "/chat-messages", self.get_chat_messages, True)
         self.router.add_route("DELETE", "/chat-messages/", self.delete_chat_message, False)
-        self.visits = 1
-
         self.files = {
-        "public/index.html": "text/html",
-        "public/style.css": "text/css",
-        "public/webrtc.js": "application/javascript",
-        "public/functions.js": "application/javascript",
-        "public/image/elephant.jpg": "image/jpeg",
-        "public/image/flamingo.jpg": "image/jpeg",
-        "public/image/kitten.jpg": "image/jpeg",
-        "public/image/cat.jpg": "image/jpeg",
-        "public/image/dog.jpg": "image/jpeg",
-        "public/image/eagle.jpg": "image/jpeg",
-        "public/image/elephant-small.jpg": "image/jpeg",
-        "public/favicon.ico": "image/x-icon",
+            "public/index.html": "text/html",
+            "public/style.css": "text/css",
+            "public/webrtc.js": "application/javascript",
+            "public/functions.js": "application/javascript",
+            "public/image/elephant.jpg": "image/jpeg",
+            "public/image/flamingo.jpg": "image/jpeg",
+            "public/image/kitten.jpg": "image/jpeg",
+            "public/image/cat.jpg": "image/jpeg",
+            "public/image/dog.jpg": "image/jpeg",
+            "public/image/eagle.jpg": "image/jpeg",
+            "public/image/elephant-small.jpg": "image/jpeg",
+            "public/favicon.ico": "image/x-icon",
         }
         self.loaded_files = {}
         self.load_files()
@@ -89,12 +88,14 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
         if "public/index.html" in self.loaded_files:
             #Cookies
             if "visits" in request.cookies:
-                self.visits = int(request.cookies["visits"]) + 1
+                MyTCPHandler.visits = int(request.cookies["visits"]) + 1
+            else:
+                MyTCPHandler.visits = 1
 
             content = self.loaded_files["public/index.html"]["content"]
             content_type = self.loaded_files["public/index.html"]["content_type"]
-            content = content.replace(b'{{visits}}', str(self.visits).encode())
-            self.send_response(content, content_type, True)
+            content = content.replace(b'{{visits}}', str(MyTCPHandler.visits).encode())
+            self.send_response(content, content_type, 200,True)
 
         else:
             self.send_error()
@@ -148,7 +149,7 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
                   f"Content-Length: {len(content)}\r\n"
                   "X-Content-Type-Options: nosniff\r\n")
         if set_cookie:
-            header +=(f"Set-Cookie: visits={self.visits};Max-Age=3600;Path=/\r\n\r\n")
+            header +=(f"Set-Cookie: visits={MyTCPHandler.visits};Max-Age=3600;Path=/\r\n\r\n")
         else:
             header += "\r\n"
         self.request.sendall(header.encode() + content)
@@ -172,9 +173,9 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
             formatted_messages = []
             for msg in messages:
                 formatted_messages.append({
-                        "username": msg['username'],
-                        "message": html.escape(msg['message']),
-                        "id": str(msg['_id'])
+                    "username": msg['username'],
+                    "message": html.escape(msg['message']),
+                    "id": str(msg['_id'])
                 })
             response = json.dumps(formatted_messages)
             self.send_response(response.encode('utf-8'), 'application/json')
@@ -188,8 +189,8 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
             result = self.chat_collection.delete_one({"_id": ObjectId(message_id)})
             self.send_response(b'', 'application/json', 204)
         except Exception as e:
-                print(f"Error in delete_chat_message: {e}")
-                self.send_response(b'', 'application/json', 204)
+            print(f"Error in delete_chat_message: {e}")
+            self.send_response(b'', 'application/json', 204)
 
 
 
