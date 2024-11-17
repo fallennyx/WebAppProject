@@ -399,7 +399,6 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
         self.request.sendall(header.encode() + content)
 
 
-
 def main():
     host = "0.0.0.0"
     port = 8080

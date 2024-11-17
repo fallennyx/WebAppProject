@@ -89,3 +89,6 @@ Content-Type: image/jpeg\r
 """
 mpr=(parse_multipart(Request(received_data)))
 print(mpr.parts[0].name)
+
+
+
