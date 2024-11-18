@@ -54,9 +54,15 @@ img.post {
     padding: 20px;
 }
 
-#chat-messages {
-    height: 90%;
-    overflow: scroll;
+#chat-messages img,
+#chat-messages video {
+    max-width: 100%;
+    height: auto;
+    margin: 10px 0;
+}
+
+#chat-messages video {
+    max-height: 300px;
 }
 
 .chat-form {

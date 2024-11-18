@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <title>CSE312 Homework App</title>
@@ -7,55 +8,56 @@
 
 <body onload="welcome();">
 
-<div class="title">
-    <h2>CSE312 App</h2>
-</div>
-
-<div class="header">
-    <div class="image_div">
-        <img src="public/image/eagle.jpg" alt="It's an eagle" class="my_image"/>
+    <div class="title">
+        <h2>CSE312 App</h2>
     </div>
-    <div class="welcome-div">
-        <p id="paragraph">
-            Welcome to CSE312 Social. Your one-stop for chat, image uploads, and video calls 🙂.
-            You've been here {{visits}} times.
-        </p>
-    </div>
-</div>
 
-<div class="contents">
-    <div class="chat">
-        <div id="chat-messages">
+    <div class="header">
+        <div class="image_div">
+            <img src="/public/image/eagle.jpg" alt="It's an eagle" class="my_image"/>
         </div>
+        <div class="welcome-div">
+            <p id="paragraph">
+                Welcome to CSE312 Social. Your one-stop for chat, image uploads, and video calls 🙂.
+                You've been here {{visits}} times.
+            </p>
+        </div>
+    </div>
 
-        <div class="chat-form">
-            <hr>
-            <form id="chat-form">
-                <label>
-                    Chat:
-                    <input id="chat-text-box" type="text" name="message">
-                </label>
-                <!-- Hidden field for the XSRF token -->
-                <input type="hidden" name="xsrf_token" value="{{xsrf_token}}">
-                <button type="button" id="chat-button" onclick="sendChat()">Send</button>
+    <div class="contents">
+        <div class="chat">
+            <div id="chat-messages">
+                <!-- Chat messages will be dynamically inserted here -->
+            </div>
+
+            <div class="chat-form">
+                <hr>
+                <form id="chat-form">
+                    <label>
+                        Chat:
+                        <input id="chat-text-box" type="text" name="message" required>
+                    </label>
+                    <!-- Hidden field for the XSRF token -->
+                    <input type="hidden" name="xsrf_token" value="{{xsrf_token}}">
+                    <button type="button" id="chat-button" onclick="sendChat()">Send</button>
+                </form>
+            </div>
+
+            <br>
+            <form action="/media-uploads" method="post" enctype="multipart/form-data">
+                Upload:
+                <input type="file" name="upload" accept="image/jpeg, image/png, image/gif, video/mp4" required>
+                <input type="submit" value="Upload">
             </form>
         </div>
 
-        <br>
-        <form action="/media-uploads" method="post" enctype="multipart/form-data">
-            Upload:
-            <input type="file" name="upload">
-            <input type="submit" value="Upload">
-        </form>
+        <div class="user-list">
+            {{auth_section}}
+        </div>
     </div>
 
-    <div class="user-list">
-        {{auth_section}}
-    </div>
-</div>
-
-<script src="/public/functions.js"></script>
-<script src="/public/webrtc.js"></script>
+    <script src="/public/functions.js"></script>
+    <script src="/public/webrtc.js"></script>
 
 </body>
 </html>
