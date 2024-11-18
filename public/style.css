@@ -1,4 +1,3 @@
-
 body {
     background-color: #000000;
     color: white;
@@ -54,15 +53,9 @@ img.post {
     padding: 20px;
 }
 
-#chat-messages img,
-#chat-messages video {
-    max-width: 100%;
-    height: auto;
-    margin: 10px 0;
-}
-
-#chat-messages video {
-    max-height: 300px;
+#chat-messages {
+    height: 90%;
+    overflow: scroll;
 }
 
 .chat-form {
