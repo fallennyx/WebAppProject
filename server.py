@@ -11,6 +11,8 @@ from pymongo import MongoClient
 import json
 import html
 import socketserver
+from util.multipart import parse_multipart
+import os
 
 
 class MyTCPHandler(socketserver.BaseRequestHandler):
@@ -38,8 +40,8 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
         self.router.add_route("POST", "/register", self.register, True)
         self.router.add_route("POST", "/login", self.login, True)
         self.router.add_route("POST", "/logout", self.logout, True)
-
-
+        self.router.add_route("POST", "/media-uploads", self.upload_image, False)
+        self.router.add_route("GET", "/public/media-uploads", self.media_uploads_path, False)
 
         self.files = {
             "public/index.html": "text/html",
@@ -61,9 +63,44 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
         super().__init__(request, client_address, server)
 
     def handle(self):
-        received_data = self.request.recv(2048)
-        request = Request(received_data)
-        self.router.route_request(request, self)
+        try:
+            received_data = b""
+            while True:
+                chunk = self.request.recv(2048)
+                if not chunk:
+                    break
+                received_data += chunk
+
+                while b'\r\n\r\n' in received_data:
+                    # Split headers and remaining data
+                    headers, remaining_data = received_data.split(b'\r\n\r\n', 1)
+
+                    # Parse Content-Length
+                    header_lines = headers.split(b'\r\n')
+                    content_length = 0
+                    for line in header_lines:
+                        if line.lower().startswith(b"content-length"):
+                            content_length = int(line.split(b":")[1].strip())
+                            break
+
+                    # Check if the body is fully received
+                    if len(remaining_data) < content_length:
+                        break  # Wait for more data
+
+                    # Extract the current request's body
+                    body = remaining_data[:content_length]
+                    extra_data = remaining_data[content_length:]  # Buffer extra data
+
+                    # Process the current request
+                    request = Request(headers + b'\r\n\r\n' + body)
+                    self.router.route_request(request, self)
+
+                    # Prepare for the next request
+                    received_data = extra_data
+
+        except Exception as e:
+            print(f"Error in handle method: {e}")
+            self.send_302_found()
 
     def load_files(self):
         for filename, content_type in self.files.items():
@@ -301,18 +338,23 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
             messages = list(self.chat_collection.find())
             formatted_messages = []
             for msg in messages:
+                message_content = msg['message']
+                if message_content.strip().startswith('<img'):
+                    formatted_message = message_content  # Render as-is
+                else:
+                    formatted_message = html.escape(message_content)  # Escape for security
                 formatted_messages.append({
-                    "username": msg['username'],
-                    "message": html.escape(msg['message']),
-                    "id": str(msg['_id'])
-                })
+                "username": msg['username'],
+                "message": formatted_message,
+                "id": str(msg['_id'])
+            })
             response = json.dumps(formatted_messages)
             self.send_response(response.encode('utf-8'), 'application/json')
         except Exception as e:
             print(f"Error in get_chat_messages: {e}")
             self.send404error()
 
-    # Handles deleting chat messages
+
     def delete_chat_message(self, request,handler):
         try:
             message_id = request.path.split('/')[-1]
@@ -397,6 +439,80 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
             header += f"Set-Cookie:auth_token={auth_token}; HttpOnly; Max-Age=3600; Path=/\r\n"
         header += "\r\n"
         self.request.sendall(header.encode() + content)
+
+    def upload_image(self, request, handler):
+        try:
+            # Step 1: Parse the multipart body
+            multipart = parse_multipart(request)
+            if multipart is None:
+                print("multipart failed")
+
+
+            # Step 2: Validate and save the file
+            image_content=None
+            for part in multipart.parts:
+                if part.name.lower()=="upload":
+                    image_content=part.content
+                else:
+                    print("no image content found")
+
+            filename = f"image_{uuid.uuid4()}.jpg"  # Use a secure naming convention
+            upload_dir = "public/media-uploads"
+            os.makedirs(upload_dir, exist_ok=True)
+            print("makedir successful")
+            file_path = os.path.join(upload_dir, filename)
+
+            with open(file_path, "wb") as f:
+                f.write(image_content)
+            path = "public/media-uploads"
+            if os.path.exists(path):
+                print(f"The path '{path}' exists.")
+            else:
+                print(f"{path}does not exist")
+
+            path = f"public/media-uploads/{filename}"
+            if os.path.exists(path):
+                print(f"The path '{path}' exists.")
+            else:
+                print(f"{path}does not exist")
+
+
+            print(f"Image saved to {file_path}")
+
+            # Step 3: Add the uploaded image to the chat database
+            username = "Guest"
+            if request.cookies.get("auth_token"):
+                user = self.users.find_one(
+                    {"auth_token": request.cookies["auth_token"]}, {"username": 1, "_id": 0}
+                )
+                if user:
+                    username = user["username"]
+
+            message = f'<img src="/{file_path}" alt="Uploaded Image"/>'
+            self.chat_collection.insert_one({"username": username, "message": message})
+
+            # Step 4: Redirect to the homepage
+            self.send_302_found()
+
+        except Exception as e:
+            print(f"Error during image upload: {e}")
+            self.send_302_found()
+
+    def media_uploads_path(self, request, handler):
+
+        file_path=request.path[1:]
+        # Remove leading '/'
+        try:
+            with open(file_path, "rb") as f:
+                content = f.read()
+                content_type = "image/jpeg"
+            self.send_response(content, content_type)
+        except FileNotFoundError:
+            print("file not found")
+            self.send404error()
+
+
+
 
 
 def main():

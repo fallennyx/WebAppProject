@@ -35,6 +35,7 @@ def parse_multipart(request):
             # Split headers from content by the first occurrence of b"\r\n\r\n"
             header_section, content = part.split(b'\r\n\r\n', 1)
         except ValueError:
+            print("Error during multipart")
             continue
 
         # Process headers
@@ -88,7 +89,7 @@ Content-Type: image/jpeg\r
 ------WebKitFormBoundary7MA4YWxkTrZu0gW--\r
 """
 mpr=(parse_multipart(Request(received_data)))
-print(mpr.parts[0].name)
+print(mpr.parts[1].name)
 
 
 

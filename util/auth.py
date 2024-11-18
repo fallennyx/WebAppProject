@@ -54,7 +54,7 @@ def extract_credentials(request):
 
     decoded_password = percent_decode(password)
     credentials = [username, decoded_password]
-    print("credentials all good")
+
     return credentials
 
 
